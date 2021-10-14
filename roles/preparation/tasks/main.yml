@@ -1,0 +1,24 @@
+---
+
+- name: Download distr Apache Kafka
+  command: curl "https://downloads.apache.org/kafka/2.8.1/kafka_2.12-2.8.1.tgz" -o /tmp/kafka.tgz
+
+- name: Creates directory
+  file:
+    path: /kafka
+    state: directory
+
+- name: Extract kafka.tgz into /tmp
+  command: tar -xvzf /tmp/kafka.tgz -C /tmp/
+
+- name: Delete distr Kafka
+  command: rm -rf /tmp/kafka.tgz
+
+- name: Copy to /kafka
+  command: cp -a /tmp/kafka_2.12-2.8.1/. /kafka/
+  become: True
+
+- name: Install Java
+  yum:
+    name: java
+    state: latest

@@ -1,0 +1,5 @@
+---
+# tasks file for roles/test
+- name: add
+  command: echo '123' > /home/ec2-user/test.txt
+  become: True

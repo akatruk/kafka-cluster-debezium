@@ -1,0 +1,2 @@
+[kafka_cluster]
+kafka1 ansible_ssh_host=kafka1.katruk.ru

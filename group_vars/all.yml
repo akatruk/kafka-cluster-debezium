@@ -1,0 +1,4 @@
+---
+
+  ansible_user            : root
+  connection_string: mongodb://172.31.200.28

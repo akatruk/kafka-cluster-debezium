@@ -1,0 +1,15 @@
+[Unit]
+Description=Zookeeper
+Before=
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Environment=/kafka/logs/
+ExecStart=/kafka/bin/kafka-server-start.sh /kafka/config/server.properties
+ExecStop=/kafka/bin/kafka-server-stop.sh /kafka/config/server.properties
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

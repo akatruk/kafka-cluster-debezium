@@ -1,0 +1,16 @@
+broker.id={{ kafka_cluster_info[ansible_hostname]["broker_id"] }}
+port=9092
+num.network.threads=3
+num.io.threads=8
+socket.send.buffer.bytes=102400
+socket.receive.buffer.bytes=102400
+socket.request.max.bytes=104857600
+log.dirs={{ kafka_data_dir }}
+num.partitions=1
+num.recovery.threads.per.data.dir=1
+log.retention.hours=168
+log.segment.bytes=1073741824
+log.retention.check.interval.ms=300000
+log.cleaner.enable=false
+zookeeper.connect={{ zk_hosts | join(":{0},".format(zk_client_port)) }}:{{ zk_client_port }}
+zookeeper.connection.timeout.ms=6000
