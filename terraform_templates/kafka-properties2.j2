@@ -1,0 +1,17 @@
+broker.id=2
+port=9092
+num.network.threads=3
+num.io.threads=8
+socket.send.buffer.bytes=102400
+socket.receive.buffer.bytes=102400
+socket.request.max.bytes=104857600
+log.dirs={{ kafka_data_dir }}
+num.partitions=1
+num.recovery.threads.per.data.dir=1
+log.retention.hours=168
+log.segment.bytes=1073741824
+log.retention.check.interval.ms=300000
+log.cleaner.enable=false
+zookeeper.connect=${host1_ip}:2181, ${host2_ip}:2181, ${host3_ip}:2181
+# zookeeper.connect=localhost:2181,localhost:2182,localhost:2183
+zookeeper.connection.timeout.ms=6000

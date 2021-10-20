@@ -1,14 +1,14 @@
 [Unit]
 Description=Zookeeper
-Before=
-After=network.target
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target
 
 [Service]
 Type=simple
 User=root
-Environment=/kafka/logs/
-ExecStart=/kafka/bin/zookeeper-server-start.sh /kafka/config/zookeeper.properties
-ExecStop=/kafka/bin/zookeeper-server-stop.sh /kafka/config/zookeeper.properties
+# Environment=/kafka/logs/
+ExecStart=/kafka/bin/zookeeper-server-start.sh /etc/kafka/zookeeper.conf
+ExecStop=/kafka/bin/zookeeper-server-stop.sh /etc/kafka/zookeeper.conf
 Restart=on-abort
 
 [Install]

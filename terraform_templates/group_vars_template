@@ -1,4 +1,0 @@
----
-
-  ansible_user            : root
-  connection_string: mongodb://${host1_ip}

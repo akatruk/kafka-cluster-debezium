@@ -6,7 +6,6 @@
   remote_user: 'ec2-user'
 
   roles:
-    # - preparation
-    # - zookeeper
-    # - kafka
-    - test
+    - preparation
+    - zookeeper
+    - kafka

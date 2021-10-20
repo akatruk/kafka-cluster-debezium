@@ -1,14 +1,24 @@
-- name: Ensure myid is set in {{ zk.data_dir }}/myid
-  template:
-    src: myid
-    dest: "{{ zk.data_dir }}/myid"
-  notify: restart zookeeper
-  tags: zookeeper
+# - name: Ensure myid is set in /kafka/myid
+#   template:
+#     src: myid
+#     dest: "/kafka/myid"
+#   notify: restart zookeeper
+#   tags: zookeeper
+
+- name: Creates directory /kafka/zookeeper
+  file:
+    path: /kafka/zookeeper
+    state: directory
+
+- name: Creates directory /etc/kafka/zookeeper
+  file:
+    path: /etc/kafka/zookeeper
+    state: directory
 
 - name: config zookeeper
   template:
     src: zookeeper.properties.j2
-    dest: /kafka/config/zookeeper.service
+    dest: /etc/kafka/zookeeper.conf
     owner: root
     group: root
     mode: 644

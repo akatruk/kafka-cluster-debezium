@@ -1,0 +1,6 @@
+---
+
+kafka_data_dir: /etc/kafka/zookeeper
+kafka-node-1: 1
+kafka-node-2: 2
+kafka-node-3: 3

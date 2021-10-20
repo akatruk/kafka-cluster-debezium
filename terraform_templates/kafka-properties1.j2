@@ -1,4 +1,4 @@
-broker.id={{ kafka_cluster_info[ansible_hostname]["broker_id"] }}
+broker.id=1
 port=9092
 num.network.threads=3
 num.io.threads=8
@@ -12,5 +12,6 @@ log.retention.hours=168
 log.segment.bytes=1073741824
 log.retention.check.interval.ms=300000
 log.cleaner.enable=false
-zookeeper.connect={{ zk_hosts | join(":{0},".format(zk_client_port)) }}:{{ zk_client_port }}
+zookeeper.connect=${host1_ip}:2181, ${host2_ip}:2181, ${host3_ip}:2181
+# zookeeper.connect=localhost:2181,localhost:2182,localhost:2183
 zookeeper.connection.timeout.ms=6000

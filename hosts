@@ -1,2 +1,4 @@
 [kafka_cluster]
 kafka1 ansible_ssh_host=kafka1.katruk.ru
+kafka2 ansible_ssh_host=kafka2.katruk.ru
+kafka3 ansible_ssh_host=kafka3.katruk.ru
