@@ -1,8 +1,5 @@
 ---
 # tasks file for roles/kafka
-- name: Copy file.role1 to host1
-  copy: src=file.role1 dest=/somewhere/file
-  when: inventory_hostname == "host1"
 
 - name: Creates directory /var/kafka
   file:

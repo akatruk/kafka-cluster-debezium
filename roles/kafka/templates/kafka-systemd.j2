@@ -1,7 +1,7 @@
 [Unit]
 Description=Kafka
-Before=
-After=network.target
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target zookeeper.service
 
 [Service]
 Type=simple
