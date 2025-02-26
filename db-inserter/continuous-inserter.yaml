@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: continuous-inserter
+  namespace: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: continuous-inserter
+  template:
+    metadata:
+      labels:
+        app: continuous-inserter
+    spec:
+      containers:
+      - name: inserter
+        image: db-inserter-ubuntu:latest
+        imagePullPolicy: Never
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_NAME
+          value: "postgresdb"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          value: "postgres"
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi 

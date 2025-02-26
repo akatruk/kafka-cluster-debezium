@@ -1,0 +1,14 @@
+apiVersion: v2
+name: debezium-connect
+description: A Helm chart for deploying Debezium with Strimzi Kafka Connect
+version: 0.1.0
+type: application
+dependencies:
+  - name: strimzi-kafka-operator
+    version: 0.39.0
+    repository: https://strimzi.io/charts/
+    condition: strimzi.enabled
+  - name: kafka
+    version: 0.39.0
+    repository: https://strimzi.io/charts/
+    condition: kafka.enabled 

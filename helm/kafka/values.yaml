@@ -1,0 +1,121 @@
+# Global configuration
+nameOverride: ""
+fullnameOverride: ""
+
+# Strimzi Operator configuration
+strimzi:
+  enabled: true
+  watchNamespaces: []
+
+# Kafka configuration
+kafka:
+  enabled: true
+  name: kafka-cluster
+  replicas: 3
+  config:
+    offsets:
+      topic:
+        replication:
+          factor: 3
+    transaction:
+      state:
+        log:
+          replication:
+            factor: 3
+          min:
+            isr: 2
+    default:
+      replication:
+        factor: 3
+    min:
+      insync:
+        replicas: 2
+  storage:
+    type: persistent-claim
+    size: 10Gi
+    deleteClaim: false
+    class: standard
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "8Gi"
+      cpu: "4"
+
+# Zookeeper configuration
+zookeeper:
+  replicas: 3
+  storage:
+    type: persistent-claim
+    size: 10Gi
+    deleteClaim: false
+    class: standard
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
+
+# Kafka Connect with Debezium configuration
+connect:
+  name: debezium-connect-cluster
+  replicas: 1
+  bootstrapServers: kafka-cluster-kafka-bootstrap:9092
+  config:
+    group:
+      id: debezium-connect-cluster
+    offset:
+      storage:
+        topic: connect-offsets
+        replication:
+          factor: 3
+    config:
+      storage:
+        topic: connect-configs
+        replication:
+          factor: 3
+    status:
+      storage:
+        topic: connect-status
+        replication:
+          factor: 3
+    processing:
+      guarantee: exactly_once
+  plugins:
+    - name: debezium-mongodb
+      enabled: true
+      version: 2.5.0.Final
+    - name: debezium-mysql
+      enabled: true
+      version: 2.5.0.Final
+    - name: debezium-postgres
+      enabled: true
+      version: 2.5.0.Final
+    - name: debezium-sqlserver
+      enabled: true
+      version: 2.5.0.Final
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
+
+# Metrics configuration
+metrics:
+  kafka:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+  zookeeper:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+  connect:
+    enabled: true
+    serviceMonitor:
+      enabled: false 

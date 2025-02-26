@@ -1,0 +1,494 @@
+global:
+  kafkaConnect:
+    image:
+      repository: registry.gitlab.com/fhl-world/aws-infra/docker-images
+      tag: kafka-connect-v0.0.25
+
+kafkaConnects:
+  - name: kafka-connect
+    annotations:
+      # use-connector-resources configures this KafkaConnect
+      # to use KafkaConnector resources to avoid
+      # needing to call the Connect REST API directly
+      strimzi.io/use-connector-resources: "true"
+      #image:
+      #repository: registry.gitlab.com/fhl-world/aws-infra/docker-images
+      #tag: kafka-connect-v0.0.1 # Docker image for Kafka Connect
+    replicas: 1
+    logging:
+      type: inline
+      loggers:
+        connect.root.logger.level: INFO
+        log4j.logger.org.apache.kafka.connect.runtime.WorkerSourceTask: TRACE
+        log4j.logger.org.apache.kafka.connect.runtime.WorkerSinkTask: DEBUG
+    bootstrapServers: b-1.tstfhl.z8eqqf.c5.kafka.ap-southeast-1.amazonaws.com:9098,b-2.tstfhl.z8eqqf.c5.kafka.ap-southeast-1.amazonaws.com:9098
+    config:
+      auto.create.topics.enable: "true"
+      config.providers: env
+      config.providers.env.class: io.strimzi.kafka.EnvVarConfigProvider
+      group.id: "kafka-connect"
+      config.storage.replication.factor: 2 # TODO: default is 3
+      offset.storage.replication.factor: 2 # TODO: default is 3
+      status.storage.replication.factor: 2 # TODO: default is 3
+      offset.storage.topic: kafka-connect-offsets
+      config.storage.topic: kafka-connect-configs
+      status.storage.topic: kafka-connect-status
+      publication.autocreate.mode: "filtered"
+      database.history.security.protocol: SASL_SSL
+      database.history.sasl.mechanism: AWS_MSK_IAM
+      database.history.sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      database.history.sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+      database.history.producer.security.protocol: SASL_SSL
+      database.history.producer.sasl.mechanism: AWS_MSK_IAM
+      database.history.producer.sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      database.history.producer.sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+      database.history.consumer.security.protocol: SASL_SSL
+      database.history.consumer.sasl.mechanism: AWS_MSK_IAM
+      database.history.consumer.sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      database.history.consumer.sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+      producer.max.request.size: 20485760
+    resources:
+      requests:
+        cpu: 500m
+        memory: 3Gi
+      limits:
+        cpu: 700m
+        memory: 3Gi
+    jvmOptions:
+      "-Xmx": "2g"
+      "-Xms": "2g"
+    template:
+      serviceAccount:
+        metadata:
+          annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::040009850485:role/KafkaConnect
+      pod:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "true"
+        imagePullSecrets:
+          - name: regcred
+        tolerations:
+          - key: "tools-taint"
+            operator: "Exists"
+            effect: "NoSchedule"
+      connectContainer:
+        env:
+          - name: KAFKA_CONNECT_SASL_MECHANISM
+            value: "aws-msk-iam"
+          - name: SECURITY_PROTOCOL
+            value: "SSL"
+    externalConfiguration:
+      env:
+        - name: AXIOMATIKA_DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: kafka-connect-user-secrets
+              key: AXIOMATIKA_DB_USERNAME
+        - name: AXIOMATIKA_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kafka-connect-user-secrets
+              key: AXIOMATIKA_DB_PASSWORD
+    metricsEnabled: true
+  # ML KafkaConnector
+  - name: ml-connect
+    annotations:
+      # use-connector-resources configures this KafkaConnect
+      # to use KafkaConnector resources to avoid
+      # needing to call the Connect REST API directly
+      strimzi.io/use-connector-resources: "true"
+      #image:
+      #repository: registry.gitlab.com/fhl-world/aws-infra/docker-images
+      #tag: kafka-connect-v0.0.1 # Docker image for Kafka Connect
+    replicas: 1
+    bootstrapServers: b-1.tstfhl.z8eqqf.c5.kafka.ap-southeast-1.amazonaws.com:9098,b-2.tstfhl.z8eqqf.c5.kafka.ap-southeast-1.amazonaws.com:9098
+    config:
+      auto.create.topics.enable: "false"
+      config.providers: env
+      config.providers.env.class: io.strimzi.kafka.EnvVarConfigProvider
+      group.id: "ml-connect"
+      config.storage.replication.factor: 2 # TODO: default is 3
+      offset.storage.replication.factor: 2 # TODO: default is 3
+      status.storage.replication.factor: 2 # TODO: default is 3
+      offset.storage.topic: ml-connect-kafka-offsets
+      config.storage.topic: ml-connect-kafka-configs
+      status.storage.topic: ml-connect-kafka-status
+      publication.autocreate.mode: "filtered"
+      database.history.security.protocol: SASL_SSL
+      database.history.sasl.mechanism: AWS_MSK_IAM
+      database.history.sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      database.history.sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+      database.history.producer.security.protocol: SASL_SSL
+      database.history.producer.sasl.mechanism: AWS_MSK_IAM
+      database.history.producer.sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      database.history.producer.sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+      database.history.consumer.security.protocol: SASL_SSL
+      database.history.consumer.sasl.mechanism: AWS_MSK_IAM
+      database.history.consumer.sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      database.history.consumer.sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+      producer.max.request.size: 4194304
+      transforms: unwrap
+      transforms.unwrap.type: io.debezium.transforms.ExtractNewRecordState
+    resources:
+      requests:
+        cpu: 500m
+        memory: 5Gi
+      limits:
+        cpu: 700m
+        memory: 5Gi
+    jvmOptions:
+      "-Xmx": "4g"
+      "-Xms": "2g"
+    tolerations:
+      - key: "tools-taint"
+        operator: "Exists"
+        effect: "NoSchedule"
+    template:
+      serviceAccount:
+        metadata:
+          annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::040009850485:role/KafkaConnect
+      pod:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "true"
+        imagePullSecrets:
+          - name: regcred
+        tolerations:
+          - key: "tools-taint"
+            operator: "Exists"
+            effect: "NoSchedule"
+      connectContainer:
+        env:
+          - name: KAFKA_CONNECT_SASL_MECHANISM
+            value: "aws-msk-iam"
+          - name: SECURITY_PROTOCOL
+            value: "SSL"
+    externalConfiguration:
+      env:
+        - name: AXIOMATIKA_DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: kafka-connect-user-secrets
+              key: AXIOMATIKA_DB_USERNAME
+        - name: AXIOMATIKA_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kafka-connect-user-secrets
+              key: AXIOMATIKA_DB_PASSWORD
+    metricsEnabled: true
+
+
+kafkaConnectors:
+  - name: axirate
+    cluster: kafka-connect
+    class: "io.debezium.connector.postgresql.PostgresConnector"
+    tasksMax: 2
+    logging:
+      type: inline
+    loggers:
+      connect.root.logger.level: DEBUG
+      log4j.logger.org.apache.kafka.connect.runtime.WorkerSourceTask: DEBUG
+      log4j.logger.org.apache.kafka.connect.runtime.WorkerSinkTask: DEBUG
+    autoRestart:
+      enabled: true # Whether to automatically restart the connector when it fails. Default: true
+      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed. Default: 7
+    config:
+      snapshot.mode: no_data
+      publication.autocreate.mode: "filtered"
+      database.hostname: "tst-rds-aurora-pg16.cluster-cgslu2skffwr.ap-southeast-1.rds.amazonaws.com"
+      database.port: "5432"
+      database.user: ${env:AXIOMATIKA_DB_USERNAME}
+      database.password: ${env:AXIOMATIKA_DB_PASSWORD}
+      database.dbname: "axirate"
+      database.server.name: "axirate"
+      topic.heartbeat.prefix: "__debezium-heartbeat" # heartbeat topic prefix full name {{topic.heartbeat.prefix}}.{{topic.prefix}}
+      heartbeat.interval.ms: "10000" #TODO: 10 seconds heartbeat interval
+      heartbeat.action.query: "insert into heartbeat_debezium.core_backends_axirate(connector_name, last_heartbeat) values ('axirate', now()) on conflict (connector_name) do update set last_heartbeat = now();" # heartbeat action query
+      slot.name: "public"
+      publication.name: "public"
+      topic.prefix: "axirate"
+      plugin.name: "pgoutput"
+      output.data.format: "JSON"
+      key.converter: "org.apache.kafka.connect.json.JsonConverter"
+      value.converter: "org.apache.kafka.connect.json.JsonConverter"
+      value.converter.schemas.enable: "false"
+      message.key.columns:
+        - "public.paymentout:merchantid"
+        - "public.paymentin:clientid"
+        - "public.billingdetail:processdate"
+        - "public.clientdatahistory:clientid"
+        - "public.loan:clientid"
+      key.converter.schemas.enable: "false"
+      table.include.list:
+        - "heartbeat_debezium.core_backends_axirate"
+        - "public.billingdetail"
+        - "public.paymentout"
+        - "public.paymentin"
+        - "public.clientdatahistory"
+        - "public.loan"
+      transforms: "extractAfter"
+      transforms.extractAfter.type: "org.apache.kafka.connect.transforms.ExtractField$Value"
+      transforms.extractAfter.field: "after"
+      transforms.extractAfter.predicate: "isHeartbeat"
+      transforms.extractAfter.negate: "true"
+      predicates: "isHeartbeat"
+      predicates.isHeartbeat.type: "org.apache.kafka.connect.transforms.predicates.TopicNameMatches"
+      predicates.isHeartbeat.pattern: "__debezium-heartbeat.axirate"
+
+  #  - name: cif-core
+  #    cluster: kafka-connect
+  #    class: "io.debezium.connector.postgresql.PostgresConnector"
+  #    tasksMax: 2
+  #    autoRestart:
+  #      enabled: true # Whether to automatically restart the connector when it fails. Default: true
+  #      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed. Default: 7
+  #    config:
+  #      publication.autocreate.mode: "filtered"
+  #      database.hostname: "tst-rds-aurora-pg16.cluster-cgslu2skffwr.ap-southeast-1.rds.amazonaws.com"
+  #      database.port: "5432"
+  #      database.user: ${env:AXIOMATIKA_DB_USERNAME}
+  #      database.password: ${env:AXIOMATIKA_DB_PASSWORD}
+  #      database.dbname: "cifcore"
+  #      database.server.name: "cifcore"
+  #      topic.heartbeat.prefix: "__debezium-heartbeat" # heartbeat topic prefix full name {{topic.heartbeat.prefix}}.{{topic.prefix}}
+  #      heartbeat.interval.ms: "10000" #TODO: 10 seconds heartbeat interval
+  #      heartbeat.action.query: "insert into heartbeat_debezium.cif(connector_name, last_heartbeat) values ('cif', now()) on conflict (connector_name) do update set last_heartbeat = now();" # heartbeat action query
+  #      slot.name: "cif"
+  #      publication.name: "cif"
+  #      snapshot.mode: "no_data"
+  #      topic.prefix: "customer-services.cdc"
+  #      plugin.name: "pgoutput"
+  #      output.data.format: "JSON"
+  #      key.converter: "org.apache.kafka.connect.json.JsonConverter"
+  #      value.converter: "org.apache.kafka.connect.json.JsonConverter"
+  #      value.converter.schemas.enable: "false"
+  #      message.key.columns:
+  #        - "cif.entity_changelog:change_id"
+  #        - "cif.fraud_checks:id"
+  #        - "cif.fraud_check_participants:id"
+  #      key.converter.schemas.enable: "false"
+  #      table.include.list:
+  #        - "heartbeat_debezium.cif"
+  #        - "cif.entity_changelog"
+  #        - "cif.fraud_checks"
+  #        - "cif.fraud_check_participants"
+  #      transforms: "extractAfter"
+  #      transforms.extractAfter.type: "org.apache.kafka.connect.transforms.ExtractField$Value"
+  #      transforms.extractAfter.field: "after"
+  #      transforms.extractAfter.predicate: "isHeartbeat"
+  #      transforms.extractAfter.negate: "true"
+  #      predicates: "isHeartbeat"
+  #      predicates.isHeartbeat.type: "org.apache.kafka.connect.transforms.predicates.TopicNameMatches"
+  #      predicates.isHeartbeat.pattern: "__debezium-heartbeat.customer-services.cdc"
+
+
+  - name: cif
+    cluster: kafka-connect
+    class: "io.debezium.connector.postgresql.PostgresConnector"
+    tasksMax: 2
+    autoRestart:
+      enabled: true # Whether to automatically restart the connector when it fails. Default: true
+      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed. Default: 7
+    config:
+      snapshot.mode: no_data
+      publication.autocreate.mode: "filtered"
+      database.hostname: "tst-rds-aurora-pg16.cluster-cgslu2skffwr.ap-southeast-1.rds.amazonaws.com"
+      database.port: "5432"
+      database.user: ${env:AXIOMATIKA_DB_USERNAME}
+      database.password: ${env:AXIOMATIKA_DB_PASSWORD}
+      database.dbname: "cifcore"
+      database.server.name: "cifcore"
+      topic.heartbeat.prefix: "__debezium-heartbeat" # heartbeat topic prefix full name {{topic.heartbeat.prefix}}.{{topic.prefix}}
+      heartbeat.interval.ms: "10000" #TODO: 10 seconds heartbeat interval
+      heartbeat.action.query: "insert into heartbeat_debezium.cif(connector_name, last_heartbeat) values ('cif', now()) on conflict (connector_name) do update set last_heartbeat = now();" # heartbeat action query
+      slot.name: "cif"
+      publication.name: "cif"
+      topic.prefix: "customer-services.cdc"
+      plugin.name: "pgoutput"
+      output.data.format: "JSON"
+      key.converter: "org.apache.kafka.connect.json.JsonConverter"
+      value.converter: "org.apache.kafka.connect.json.JsonConverter"
+      value.converter.schemas.enable: "false"
+      message.key.columns:
+        - "cif.entity_changelog:change_id"
+        - "cif.fraud_checks:id"
+        - "cif.fraud_check_participants:id"
+      key.converter.schemas.enable: "false"
+      table.include.list:
+        - "heartbeat_debezium.cif"
+        - "cif.entity_changelog"
+        - "cif.fraud_checks"
+        - "cif.fraud_check_participants"
+      transforms: "extractAfter"
+      transforms.extractAfter.type: "org.apache.kafka.connect.transforms.ExtractField$Value"
+      transforms.extractAfter.field: "after"
+      transforms.extractAfter.predicate: "isHeartbeat"
+      transforms.extractAfter.negate: "true"
+      predicates: "isHeartbeat"
+      predicates.isHeartbeat.type: "org.apache.kafka.connect.transforms.predicates.TopicNameMatches"
+      predicates.isHeartbeat.pattern: "__debezium-heartbeat.customer-services.cdc"
+
+
+
+
+
+  - name: ml-axi
+    cluster: ml-connect
+    class: "io.debezium.connector.postgresql.PostgresConnector"
+    tasksMax: 1
+    autoRestart:
+      enabled: true # Whether to automatically restart the connector when it fails. Default: true
+      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed. Default: 7
+    config:
+      snapshot.mode: no_data
+      publication.autocreate.mode: "filtered"
+      database.hostname: "tst-rds-aurora-pg16.cluster-cgslu2skffwr.ap-southeast-1.rds.amazonaws.com"
+      database.port: "5432"
+      database.user: ${env:AXIOMATIKA_DB_USERNAME}
+      database.password: ${env:AXIOMATIKA_DB_PASSWORD}
+      database.dbname: "axirate"
+      database.server.name: "axirate"
+      topic.heartbeat.prefix: "__debezium-heartbeat" # heartbeat topic prefix full name {{topic.heartbeat.prefix}}.{{topic.prefix}}
+      heartbeat.interval.ms: "10000" #TODO: 10 seconds heartbeat interval
+      heartbeat.action.query: "insert into heartbeat_debezium.ml_axirate_public(connector_name, last_heartbeat) values ('ml-axi', now()) on conflict (connector_name) do update set last_heartbeat = now();" # heartbeat action query
+      slot.name: "ml_axirate_public"
+      # Signal processor configuration
+      # see https://debezium.io/documentation/reference/stable/configuration/signalling.html#debezium-signaling-enabling-kafka-signaling-channel
+      signal.kafka.bootstrap.servers: b-1.tstfhl.z8eqqf.c5.kafka.ap-southeast-1.amazonaws.com:9098,b-2.tstfhl.z8eqqf.c5.kafka.ap-southeast-1.amazonaws.com:9098
+      signal.kafka.groupId: "ml-connect"
+      signal.enabled.channels: "kafka"
+      signal.kafka.topic: "ml-connect-ml-axi-signal"
+      signal.consumer.security.protocol: SASL_SSL
+      signal.consumer.sasl.mechanism: AWS_MSK_IAM
+      signal.consumer.sasl.jaas.config: software.amazon.msk.auth.iam.IAMLoginModule required;
+      signal.consumer.sasl.client.callback.handler.class: software.amazon.msk.auth.iam.IAMClientCallbackHandler
+
+      publication.name: "ml_axirate_public"
+      topic.prefix: "ml.risks.phonebooks.axirate"
+      #connector.class: "io.debezium.connector.postgresql.PostgresConnector"
+      plugin.name: "pgoutput"
+      output.data.format: "avro"
+      key.converter: "io.confluent.connect.avro.AvroConverter"
+      key.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+      value.converter: "io.confluent.connect.avro.AvroConverter"
+      value.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+      message.key.columns:
+        - "public.client:clientid"
+        - "public.loan:loanid"
+        - "public.loanstatushistory:loanstatushistoryid"
+        - "public.actualapplicationdata:applicationid"
+        - "public.application:applicationid"
+        - "public.document:documentid"
+        - "public.clientdatahistory:clientdatahistoryid"
+        - "public.person:personid"
+        - "public.address:addressid"
+      table.include.list:
+        - "heartbeat_debezium.ml_axirate_public"
+        - "public.client"
+        - "public.loan"
+        - "public.loanstatushistory"
+        - "public.actualapplicationdata"
+        - "public.application"
+        - "public.document"
+        - "public.clientdatahistory"
+        - "public.person"
+        - "public.address"
+
+
+  - name: ml-cif
+    cluster: ml-connect
+    class: "io.debezium.connector.postgresql.PostgresConnector"
+    tasksMax: 1
+    autoRestart:
+      enabled: true # Whether to automatically restart the connector when it fails. Default: true
+      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed. Default: 7
+    config:
+      snapshot.mode: no_data
+      publication.autocreate.mode: "filtered"
+      database.hostname: "tst-rds-aurora-pg16.cluster-cgslu2skffwr.ap-southeast-1.rds.amazonaws.com"
+      database.port: "5432"
+      database.user: ${env:AXIOMATIKA_DB_USERNAME}
+      database.password: ${env:AXIOMATIKA_DB_PASSWORD}
+      database.dbname: "cifcore"
+      database.server.name: "cifcore"
+      topic.heartbeat.prefix: "__debezium-heartbeat" # heartbeat topic prefix full name {{topic.heartbeat.prefix}}.{{topic.prefix}}
+      heartbeat.interval.ms: "10000" #TODO: 10 seconds heartbeat interval
+      heartbeat.action.query: "insert into heartbeat_debezium.ml_cif(connector_name, last_heartbeat) values ('ml-cif', now()) on conflict (connector_name) do update set last_heartbeat = now();" # heartbeat action query
+      slot.name: "ml_cif"
+      publication.name: "ml_cif"
+      topic.prefix: "ml.risks.phonebooks.cifcore"
+      plugin.name: "pgoutput"
+      output.data.format: "avro"
+      key.converter: "io.confluent.connect.avro.AvroConverter"
+      key.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+      value.converter: "io.confluent.connect.avro.AvroConverter"
+      value.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+      message.key.columns:
+        - "cif.communication_channels:id"
+      table.include.list:
+        - "heartbeat_debezium.ml_cif"
+        - "cif.communication_channels"
+
+  - name: ml-data-collector
+    cluster: ml-connect
+    class: "io.debezium.connector.postgresql.PostgresConnector"
+    tasksMax: 1
+    autoRestart:
+      enabled: true # Whether to automatically restart the connector when it fails. Default: true
+      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed. Default: 7
+    config:
+      snapshot.mode: no_data
+      publication.autocreate.mode: "filtered"
+      database.hostname: "tst-rds-aurora-pg16.cluster-cgslu2skffwr.ap-southeast-1.rds.amazonaws.com"
+      database.port: "5432"
+      database.user: ${env:AXIOMATIKA_DB_USERNAME}
+      database.password: ${env:AXIOMATIKA_DB_PASSWORD}
+      database.dbname: "data-collector"
+      database.server.name: "data-collector"
+      slot.name: "ml_data_collector"
+      publication.name: "ml_data_collector"
+      topic.heartbeat.prefix: "__debezium-heartbeat" # heartbeat topic prefix full name {{topic.heartbeat.prefix}}.{{topic.prefix}}
+      heartbeat.interval.ms: "10000" #TODO: 10 seconds heartbeat interval
+      heartbeat.action.query: "insert into heartbeat_debezium.ml_data_collector(connector_name, last_heartbeat) values ('data-collector', now()) on conflict (connector_name) do update set last_heartbeat = now();" # heartbeat action query
+      topic.prefix: "ml.risks.phonebooks.data-collector"
+      plugin.name: "pgoutput"
+      output.data.format: "avro"
+      key.converter: "io.confluent.connect.avro.AvroConverter"
+      key.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+      value.converter: "io.confluent.connect.avro.AvroConverter"
+      value.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+      message.key.columns:
+        - "public.phonebook:client_id"
+      table.include.list:
+        - "heartbeat_debezium.ml_data_collector"
+        - "public.phonebook"
+
+  - name: ml-sink-phonebooks
+    cluster: ml-connect
+    class: "io.debezium.connector.jdbc.JdbcSinkConnector"
+    tasksMax: 1
+    autoRestart:
+      enabled: true # Whether to automatically restart the connector when it fails. Default: true
+      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed. Default: 7
+    config:
+      snapshot.mode: no_data
+      connection.url: "jdbc:postgresql://tst-rds-aurora-pg16.cluster-cgslu2skffwr.ap-southeast-1.rds.amazonaws.com:5432/ml-phonebooks"
+      connection.username: ${env:AXIOMATIKA_DB_USERNAME}
+      connection.password: ${env:AXIOMATIKA_DB_PASSWORD}
+      insert.mode: "upsert"
+      primary.key.mode: "record_key"
+      schema.evolution: "basic"
+      topics: "ml.historical-features.applications-info,ml.historical-features.phones-long,ml.historical-features.loans-info,ml.historical-features.loans-status-history,ml.historical-features.loans-payments"
+      table.name.format: "kafkaconnect.${topic}"
+      transforms: "ReplaceDotsAndDashes"
+      transforms.ReplaceDotsAndDashes.type: "org.apache.kafka.connect.transforms.RegexRouter"
+      transforms.ReplaceDotsAndDashes.regex: "([.\\-])"
+      transforms.ReplaceDotsAndDashes.replacement: "_"
+      key.converter: "io.confluent.connect.avro.AvroConverter"
+      key.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+      value.converter: "io.confluent.connect.avro.AvroConverter"
+      value.converter.schema.registry.url: "http://schema-registry-cp-schema-registry.schema-registry.svc.cluster.local:8081"
+
+

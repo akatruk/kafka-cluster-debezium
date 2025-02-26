@@ -1,0 +1,122 @@
+# Default values for helm-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  kafkaConnect:
+    image:
+      repository: quay.io/debezium/connect
+      tag: 2.5
+
+kafkaConnects:
+  - name: kafka-connect
+    labels: {}
+    annotations:
+      # use-connector-resources configures this KafkaConnect
+      # to use KafkaConnector resources to avoid
+      # needing to call the Connect REST API directly
+      strimzi.io/use-connector-resources: "true"
+    #image:
+    #  repository: quay.io/debezium/connect
+    #  tag: 2.5
+    replicas: 1 # Number of Kafka Connect replicas
+    bootstrapServers: kafka-cluster-kafka-bootstrap.kafka-system:9092 # Kafka bootstrap servers
+    #logging:
+    #  type: inline
+    #  loggers:
+    #    connect.root.logger.level: INFO
+    #    log4j.logger.org.apache.kafka.connect.runtime.WorkerSourceTask: TRACE
+    #    log4j.logger.org.apache.kafka.connect.runtime.WorkerSinkTask: DEBUG
+
+    config:
+      auto.create.topics.enable: "true" # Enable auto creation of topics
+      config.providers: env # Use environment variables for configuration
+      config.providers.env.class: io.strimzi.kafka.EnvVarConfigProvider # Use environment variables for configuration
+      group.id: "kafka-connect" # Kafka Connect group id for consumer
+      config.storage.replication.factor: 1 # Replication factor for Kafka Connect config storage
+      offset.storage.replication.factor: 1 # Replication factor for Kafka Connect offset storage
+      status.storage.replication.factor: 1 # Replication factor for Kafka Connect status storage
+      offset.storage.topic: kafka-connect-offsets # Kafka topic for storing offsets
+      config.storage.topic: kafka-connect-configs # Kafka topic for storing configs
+      status.storage.topic: kafka-connect-status # Kafka topic for storing status
+      publication.autocreate.mode: "filtered" # Autocreate mode for Kafka Connect publication topics
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+    #  limits:
+    #    cpu: 100m
+    #    memory: 512Mi
+    #jvmOptions:
+      #"-Xmx": "2g"
+      #"-Xms": "2g"
+    template:
+      serviceAccount:
+        metadata:
+          annotations:
+            #eks.amazonaws.com/role-arn: arn:aws:iam::027141399306:role/KafkaConnect # IAM role for Kafka Connect
+      pod:
+        metadata:
+          annotations:
+            sidecar.istio.io/inject: "false" # Disable Istio sidecar injection
+        #imagePullSecrets:
+        #  - name: regcred
+      connectContainer:
+        env:
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: kafka-connect-user-secrets
+                key: AXIOMATIKA_DB_USERNAME
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: kafka-connect-user-secrets
+                key: AXIOMATIKA_DB_PASSWORD
+    externalConfiguration:
+      env:
+        - name: AXIOMATIKA_DB_USERNAME # Database username from secrets
+          valueFrom:
+            secretKeyRef:
+              name: kafka-connect-user-secrets
+              key: AXIOMATIKA_DB_USERNAME
+        - name: AXIOMATIKA_DB_PASSWORD # Database password from secrets
+          valueFrom:
+            secretKeyRef:
+              name: kafka-connect-user-secrets
+              key: AXIOMATIKA_DB_PASSWORD
+    metricsEnabled: false
+
+namespace: "kafka-connect"
+
+kafkaConnectors:
+  - name: postgres-connector # Name of the KafkaConnector resource
+    cluster: kafka-connect # Name of the KafkaConnect resource
+    class: "io.debezium.connector.postgresql.PostgresConnector" # Connector class
+    tasksMax: 1 # Maximum number of tasks to use for this connector
+    state: "running" # State of the connector
+    autoRestart:
+      enabled: true # Whether to automatically restart the connector when it fails
+      maxRestarts: 7 # Maximum number of restarts before the connector is considered failed
+    config:
+      publication.autocreate.mode: "filtered" # Whether to automatically create a publication
+      database.hostname: "postgres.postgres.svc.cluster.local" # Hostname of the database server
+      database.port: "5432" # Port of the database server
+      database.user: "${env:DB_USERNAME}" # Name of the database user
+      database.password: "${env:DB_PASSWORD}" # Password of the database user
+      database.dbname: "postgresdb" # Name of the database
+      database.server.name: "postgres" # Unique name that identifies the database server
+      slot.name: "debezium" # Name of the Postgres logical decoding slot
+      table.include.list: "public.sensor_data" # Tables for which changes are to be captured
+      topic.prefix: "postgres" # Prefix for Kafka topic names
+      plugin.name: "pgoutput" # Name of the Postgres logical decoding plugin
+      output.data.format: "JSON" # Format of the output message value
+      key.converter: "org.apache.kafka.connect.json.JsonConverter" # Converter for the Kafka message key
+      key.converter.schemas.enable: "false" # Whether the key converter should include the schema
+      value.converter: "org.apache.kafka.connect.json.JsonConverter" # Converter for the Kafka message value
+      value.converter.schemas.enable: "false" # Whether the value converter should include the schema
+      transforms: "unwrap" # List of transformations to apply
+      transforms.unwrap.type: "io.debezium.transforms.ExtractNewRecordState" # Transformation class
+      transforms.unwrap.drop.tombstones: "false" # Whether to drop tombstone events
+      transforms.unwrap.delete.handling.mode: "rewrite" # How to handle delete events
+      transforms.unwrap.add.fields: "op,table,lsn,source.ts_ms" # Fields to add to the payload

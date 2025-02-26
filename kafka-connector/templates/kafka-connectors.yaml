@@ -1,0 +1,29 @@
+{{- $dot := . }}
+{{- range $v := .Values.kafkaConnectors }}
+{{- $newСonfig := omit  $v.config "table.include.list" "table.exclude.list" "message.key.columns"   }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: {{ $v.name }}
+  labels:
+    strimzi.io/cluster: {{ $v.cluster }}
+spec:
+  autoRestart:
+    enabled: {{ $v.autoRestart.enabled | default true }}
+    maxRestarts: {{ $v.autoRestart.maxRestarts | default 7 }}
+  class: {{ $v.class | default "io.debezium.connector.postgresql.PostgresConnector" | quote }}
+  tasksMax: {{ $v.tasksMax | default 1 }}
+  state: {{ $v.state | default "running" }}
+  config:
+    {{- if (index $v "config" "table.include.list" ) }}
+    table.include.list: {{ join ","  (index $v "config" "table.include.list" )  }}
+    {{- end }}
+    {{- if (index $v "config" "table.exclude.list" ) }}
+    table.exclude.list: {{ join ","  (index $v "config" "table.exclude.list" )  }}
+    {{- end }}
+    {{- if (index $v "config" "message.key.columns" ) }}
+    message.key.columns: {{ join ";"  (index $v "config" "message.key.columns" )  }}
+    {{- end }}
+    {{- toYaml $newСonfig | nindent 4 }}
+{{- end }}

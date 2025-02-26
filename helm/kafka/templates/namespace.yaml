@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Release.Namespace | default "kafka-system" }}
+  labels:
+    name: {{ .Release.Namespace | default "kafka-system" }}
+    app.kubernetes.io/name: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }} 
