@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-connector
+  namespace: kafka-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: create-connector
+        image: curlimages/curl
+        command:
+        - /bin/sh
+        - -c
+        - |
+          curl -X POST -H "Content-Type: application/json" --data @/tmp/connector.json http://debezium-connect:8083/connectors && echo "Connector created successfully"
+        volumeMounts:
+        - name: connector-config
+          mountPath: /tmp/connector.json
+          subPath: connector.json
+      restartPolicy: Never
+      volumes:
+      - name: connector-config
+        configMap:
+          name: connector-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: connector-config
+  namespace: kafka-system
+data:
+  connector.json: |
+    {
+      "name": "postgres-sensor-connector",
+      "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "tasks.max": "1",
+        "database.hostname": "postgres.postgres.svc.cluster.local",
+        "database.port": "5432",
+        "database.user": "postgres",
+        "database.password": "postgres",
+        "database.dbname": "postgresdb",
+        "database.server.name": "kafka-test",
+        "slot.name": "debezium",
+        "table.include.list": "public.sensor_data",
+        "topic.prefix": "kafka-test",
+        "plugin.name": "pgoutput",
+        "publication.autocreate.mode": "filtered",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter.schemas.enable": "false",
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false",
+        "transforms.unwrap.delete.handling.mode": "rewrite",
+        "transforms.unwrap.add.fields": "op,table,lsn,source.ts_ms"
+      }
+    }

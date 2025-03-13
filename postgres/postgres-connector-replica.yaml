@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-connector-config
+  namespace: kafka-system
+data:
+  connector-config.json: |
+    {
+      "name": "postgres-connector",
+      "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "tasks.max": "1",
+        "database.hostname": "postgres-replica.postgres.svc.cluster.local",
+        "database.port": "5432",
+        "database.user": "postgres",
+        "database.password": "postgres",
+        "database.dbname": "postgresdb",
+        "database.server.name": "kafka-test",
+        "slot.name": "debezium",
+        "table.include.list": "public.sensor_data",
+        "topic.prefix": "kafka-test",
+        "plugin.name": "pgoutput",
+        "publication.autocreate.mode": "filtered",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter.schemas.enable": "false",
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false",
+        "transforms.unwrap.delete.handling.mode": "rewrite",
+        "transforms.unwrap.add.fields": "op,table,lsn,source.ts_ms"
+      }
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apply-postgres-connector
+  namespace: kafka-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: apply-connector
+        image: curlimages/curl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Applying connector configuration..."
+          # First check if connector exists
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://debezium-connect:8083/connectors/postgres-connector)
+          
+          if [ "$STATUS" == "200" ]; then
+            # Update connector if it exists
+            echo "Connector exists, updating configuration..."
+            curl -X PUT -H "Content-Type: application/json" \
+              --data @/config/connector-config.json \
+              http://debezium-connect:8083/connectors/postgres-connector/config
+          else
+            # Create connector if it doesn't exist
+            echo "Creating new connector..."
+            curl -X POST -H "Content-Type: application/json" \
+              --data @/config/connector-config.json \
+              http://debezium-connect:8083/connectors
+          fi
+          
+          echo "Checking connector status..."
+          curl -s http://debezium-connect:8083/connectors/postgres-connector/status
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+      restartPolicy: OnFailure
+      volumes:
+      - name: config-volume
+        configMap:
+          name: postgres-connector-config
+  backoffLimit: 3 
