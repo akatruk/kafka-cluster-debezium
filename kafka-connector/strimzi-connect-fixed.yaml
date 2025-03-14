@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-connector-config
+  namespace: kafka-system
+data:
+  postgres-connector.json: |-
+    {
+      "name": "postgres-connector",
+      "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "database.hostname": "postgres.postgres.svc.cluster.local",
+        "database.port": "5432",
+        "database.user": "postgres",
+        "database.password": "postgres",
+        "database.dbname": "postgresdb",
+        "database.server.name": "postgres",
+        "slot.name": "debezium",
+        "table.include.list": "public.sensor_data",
+        "topic.prefix": "postgres",
+        "plugin.name": "pgoutput",
+        "publication.autocreate.mode": "filtered",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "false",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter.schemas.enable": "false",
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false",
+        "transforms.unwrap.delete.handling.mode": "rewrite",
+        "transforms.unwrap.add.fields": "op,table,lsn,source.ts_ms"
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: debezium-connect
+  namespace: kafka-system
+  labels:
+    app: debezium-connect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: debezium-connect
+  template:
+    metadata:
+      labels:
+        app: debezium-connect
+    spec:
+      containers:
+      - name: connect
+        image: quay.io/debezium/connect:2.3.2.Final
+        ports:
+        - containerPort: 8083
+        env:
+        - name: BOOTSTRAP_SERVERS
+          value: kafka-cluster-kafka-bootstrap:9092
+        - name: GROUP_ID
+          value: connect-cluster
+        - name: CONFIG_STORAGE_TOPIC
+          value: connect-configs
+        - name: OFFSET_STORAGE_TOPIC
+          value: connect-offsets
+        - name: STATUS_STORAGE_TOPIC 
+          value: connect-status
+        volumeMounts:
+        - name: connector-config
+          mountPath: /opt/kafka/config/postgres-connector.json
+          subPath: postgres-connector.json
+      volumes:
+      - name: connector-config
+        configMap:
+          name: postgres-connector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: debezium-connect
+  namespace: kafka-system
+spec:
+  selector:
+    app: debezium-connect
+  ports:
+  - port: 8083
+    targetPort: 8083
+  type: ClusterIP 

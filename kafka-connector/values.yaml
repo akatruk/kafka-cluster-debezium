@@ -87,7 +87,7 @@ kafkaConnects:
               key: AXIOMATIKA_DB_PASSWORD
     metricsEnabled: false
 
-namespace: "kafka-connect"
+namespace: "kafka-system"
 
 kafkaConnectors:
   - name: postgres-connector # Name of the KafkaConnector resource
